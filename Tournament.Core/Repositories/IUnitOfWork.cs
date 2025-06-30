@@ -4,13 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Tournament.Core.Repositories
-{
-    public interface IUnitOfWork
-    {
-        public ITournamentRepository TournamentRepository { get; }
-        public IGameRepository GameRepository { get; }
+namespace Tournament.Core.Repositories;
 
-        Task CompleteAsync();
-    }
+public interface IUnitOfWork
+{
+    public ITournamentRepository TournamentRepository { get; }
+    public IGameRepository GameRepository { get; }
+
+    Task CompleteAsync();
 }
