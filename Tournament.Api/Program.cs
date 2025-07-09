@@ -5,8 +5,8 @@ using Tournament.Api.Extensions;
 using Tournament.Core.Repositories;
 using Tournament.Data.Data;
 using Tournament.Data.Repositories;
-using Tournament.Data.Services;
 using Service.Contracts.Services;
+using Tournament.Services;
 
 namespace Tournament.Api;
 
@@ -34,6 +34,7 @@ public class Program
         builder.Services.AddScoped<ITournamentRepository, TournamentRepository>();
         builder.Services.AddScoped<IGameRepository, GameRepository>();
         builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+        builder.Services.AddScoped<IServiceManager, ServiceManager>();
         builder.Services.AddScoped<ITournamentService, TournamentService>();
         builder.Services.AddScoped<IGameService, GameService>();
 

@@ -1,5 +1,5 @@
 using AutoMapper;
-using Service.Contracts.DTO;
+using Service.Contracts.Services.DTO;
 using Service.Contracts.Services;
 using Tournament.Core.Entities;
 using Tournament.Core.Repositories;
@@ -17,47 +17,46 @@ public class TournamentService : ITournamentService
         _mapper = mapper;
     }
 
-    public async Task<IEnumerable<TournamentDTO>> GetAllAsync(bool includeGames = false)
+    public async Task<ServiceResult<IEnumerable<TournamentDTO>>> GetAllAsync(bool includeGames = false)
     {
         var tournaments = await _unitOfWork.TournamentRepository.GetAllAsync(includeGames);
-        return _mapper.Map<IEnumerable<TournamentDTO>>(tournaments);
+        return ServiceResult<IEnumerable<TournamentDTO>>.Ok(_mapper.Map<IEnumerable<TournamentDTO>>(tournaments));
     }
 
-    public async Task<TournamentDTO?> GetAsync(int id, bool includeGames = false)
+    public async Task<ServiceResult<TournamentDTO?>> GetAsync(int id, bool includeGames = false)
     {
         var tournament = await _unitOfWork.TournamentRepository.GetAsync(id, includeGames);
-        return tournament == null ? null : _mapper.Map<TournamentDTO>(tournament);
+        if (tournament == null)
+            return ServiceResult<TournamentDTO?>.Fail($"Tournament with ID {id} not found.");
+        return ServiceResult<TournamentDTO?>.Ok(_mapper.Map<TournamentDTO>(tournament));
     }
 
-    public async Task<TournamentDTO> AddAsync(TournamentDTO tournamentDTO)
+    public async Task<ServiceResult<TournamentDTO>> AddAsync(TournamentDTO tournamentDTO)
     {
         var tournament = _mapper.Map<TournamentDetails>(tournamentDTO);
         _unitOfWork.TournamentRepository.Add(tournament);
         await _unitOfWork.CompleteAsync();
-        
-        return _mapper.Map<TournamentDTO>(tournament);
+        return ServiceResult<TournamentDTO>.Ok(_mapper.Map<TournamentDTO>(tournament));
     }
 
-    public async Task<bool> UpdateAsync(int id, TournamentDTO tournamentDTO)
+    public async Task<ServiceResult<bool>> UpdateAsync(int id, TournamentDTO tournamentDTO)
     {
         var tournament = await _unitOfWork.TournamentRepository.GetAsync(id);
-        if (tournament == null) return false;
-
+        if (tournament == null)
+            return ServiceResult<bool>.Fail($"Tournament with ID {id} not found.");
         _mapper.Map(tournamentDTO, tournament);
         _unitOfWork.TournamentRepository.Update(tournament);
         await _unitOfWork.CompleteAsync();
-        
-        return true;
+        return ServiceResult<bool>.Ok(true);
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task<ServiceResult<bool>> DeleteAsync(int id)
     {
         var tournament = await _unitOfWork.TournamentRepository.GetAsync(id);
-        if (tournament == null) return false;
-
+        if (tournament == null)
+            return ServiceResult<bool>.Fail($"Tournament with ID {id} not found.");
         _unitOfWork.TournamentRepository.Remove(tournament);
         await _unitOfWork.CompleteAsync();
-        
-        return true;
+        return ServiceResult<bool>.Ok(true);
     }
 }
