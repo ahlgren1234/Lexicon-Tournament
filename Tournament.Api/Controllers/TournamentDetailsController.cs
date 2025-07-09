@@ -1,25 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Tournament.Data.Data;
-using Tournament.Core.Entities;
-using Tournament.Core.Repositories;
-using Tournament.Core.DTO;
-using AutoMapper;
+﻿using Microsoft.AspNetCore.Mvc;
+using Service.Contracts.DTO;
+using Service.Contracts.Services;
 using Microsoft.AspNetCore.JsonPatch;
 
-namespace Tournament.Data.Controllers;
+namespace Tournament.Api.Controllers;
 
 [Route("api/TournamentDetails")]
 [ApiController]
-public class TournamentDetailsController(IUnitOfWork unitOfWork, IMapper mapper) : ControllerBase
+public class TournamentDetailsController : ControllerBase
 {
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    private readonly IMapper _mapper = mapper;
+    private readonly ITournamentService _tournamentService;
+
+    public TournamentDetailsController(ITournamentService tournamentService)
+    {
+        _tournamentService = tournamentService;
+    }
 
 
     // GET: api/TournamentDetails
@@ -29,7 +24,7 @@ public class TournamentDetailsController(IUnitOfWork unitOfWork, IMapper mapper)
         [FromQuery] string? title = null,
         [FromQuery] string? sortBy = null)
     {
-        var tournaments = await _unitOfWork.TournamentRepository.GetAllAsync(includeGames);
+        var tournaments = await _tournamentService.GetAllAsync(includeGames);
 
         if (!string.IsNullOrWhiteSpace(title))
         {
@@ -45,81 +40,63 @@ public class TournamentDetailsController(IUnitOfWork unitOfWork, IMapper mapper)
             _ => tournaments
         };
 
-        var dto = _mapper.Map<IEnumerable<TournamentDTO>>(tournaments);
-        return Ok(dto);
+        return Ok(tournaments);
     }
-
 
     // GET: api/TournamentDetails/5 
     [HttpGet("{id}")]
-    public async Task<ActionResult<TournamentDTO>> GetTournamentDetails(int id)
+    public async Task<ActionResult<TournamentDTO>> GetTournamentById(int id)
     {
+        var tournament = await _tournamentService.GetAsync(id);
 
-        var dto = await _unitOfWork.TournamentRepository.GetAsync(id);
-
-        if (dto == null)
+        if (tournament == null)
         {
             return NotFound();
         }
 
-        return Ok(_mapper.Map<TournamentDTO>(dto));
+        return Ok(tournament);
     }
 
-
     // PUT: api/TournamentDetails/5
-    // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutTournamentDetails(int id, TournamentDTO dto)
+    public async Task<IActionResult> PutTournamentDetails(int id, TournamentDTO tournamentDTO)
     {
-        if (!await _unitOfWork.TournamentRepository.AnyAsync(id))
+        if (id != tournamentDTO.Id)
+        {
+            return BadRequest();
+        }
+
+        var result = await _tournamentService.UpdateAsync(id, tournamentDTO);
+        
+        if (!result)
+        {
             return NotFound();
-
-        var entity = await _unitOfWork.TournamentRepository.GetAsync(id);
-        if (entity == null)
-            return NotFound();
-
-        entity.Title = dto.Title;
-        entity.StartDate = dto.StartDate;
-
-        _unitOfWork.TournamentRepository.Update(entity);
-        await _unitOfWork.CompleteAsync();
+        }
 
         return NoContent();
     }
 
-
     // POST: api/TournamentDetails
-    // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
     [HttpPost]
-    public async Task<ActionResult<TournamentDetails>> PostTournamentDetails(TournamentDTO dto)
+    public async Task<ActionResult<TournamentDTO>> PostTournamentDetails(TournamentDTO tournamentDTO)
     {
-        var entity = _mapper.Map<TournamentDetails>(dto);
-        _unitOfWork.TournamentRepository.Add(entity);
-        await _unitOfWork.CompleteAsync();
-
-        var createdDto = _mapper.Map<TournamentDTO>(entity);
-        return CreatedAtAction(nameof(GetTournamentDetails), new { id = entity.Id }, createdDto);
-
+        var createdTournament = await _tournamentService.AddAsync(tournamentDTO);
+        return CreatedAtAction(nameof(GetTournamentById), new { id = createdTournament.Id }, createdTournament);
     }
-
 
     // DELETE: api/TournamentDetails/5
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteTournamentDetails(int id)
     {
-        var dto = await _unitOfWork.TournamentRepository.GetAsync(id);
-        if (dto == null)
+        var result = await _tournamentService.DeleteAsync(id);
+        
+        if (!result)
         {
             return NotFound();
         }
 
-        _unitOfWork.TournamentRepository.Remove(dto);
-        await _unitOfWork.CompleteAsync();
-
         return NoContent();
-
     }
-
 
     [HttpPatch("{id:int}")]
     public async Task<ActionResult<TournamentDTO>> PatchTournament(int id, JsonPatchDocument<TournamentDTO> patchDocument)
@@ -127,22 +104,18 @@ public class TournamentDetailsController(IUnitOfWork unitOfWork, IMapper mapper)
         if (patchDocument == null)            
             return BadRequest("Patch document cannot be null.");
         
-        var tournamentExists = await _unitOfWork.TournamentRepository.GetAsync(id);
-        if (tournamentExists == null) 
+        var tournament = await _tournamentService.GetAsync(id);
+        if (tournament == null) 
             return NotFound($"Tournament with ID {id} not found.");
 
-        var dto = _mapper.Map<TournamentDTO>(tournamentExists);
-        patchDocument.ApplyTo(dto, ModelState);
-        TryValidateModel(dto);
+        patchDocument.ApplyTo(tournament, ModelState);
+        TryValidateModel(tournament);
 
         if (!ModelState.IsValid)            
             return UnprocessableEntity(ModelState);
 
-        _mapper.Map(dto, tournamentExists);
-        //_unitOfWork.TournamentRepository.Update(tournamentExists);
-        await _unitOfWork.CompleteAsync();
+        await _tournamentService.UpdateAsync(id, tournament);
 
-        return Ok(dto);
-
+        return Ok(tournament);
     }     
 }
