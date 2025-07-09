@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Service.Contracts.DTO;
+using Service.Contracts.Services.DTO;
 using Tournament.Core.Entities;
 
 namespace Tournament.Data.Data;
